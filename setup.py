@@ -8,7 +8,7 @@ setup(
     author='green-kit-7',
     author_email='',
     packages=find_packages(),
-    install_requires=[],
+    install_requires=['requests','tqdm'],
     include_package_data=True,
     zip_safe=False
 )
