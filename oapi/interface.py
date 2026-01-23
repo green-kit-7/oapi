@@ -26,6 +26,303 @@ def get(method='',session=None):
         return dict()
 
 
+class profile:
+    """
+    Класс предоставляет более удобный способ работы с контентом в котором содержится информация о профиле пользователя.
+
+    topics_id (list):Индетефикаторы постов пользователя, не обязательно все, а только те, с которыми сейчас идёт работа.
+    replies_id (list):Индетефикаторы ответов пользователя, не обязательно все, а только те, с которыми сейчас идёт работа.
+
+    """
+
+    def __init__(self, content=dict()):
+        """
+        Конструктор создаёт профиль из словоря с информацией о нём.
+
+        Параметры:
+            content (dict):Словарь в котором содержится информация о профиле.
+        """
+        self.content = None
+        if content == None:
+            self.content = dict()
+        else:
+            self.content = content
+
+    @staticmethod
+    def byId(profile_id=0, localbase=None):
+        """
+        Метод возвращает профиль по его id, если локальная база localbase!=None, то ищет и читает его из локальной базы.
+
+        Параметры:
+            profile_id (int):Уникальный индетификатор профиля.
+            localbase (oapi.base.localBase):Локальная база.
+
+        Возвращает:
+            profile:Информация о профиле.
+        """
+        result = profile()
+        if localbase == None:
+            count = get(f"topic/profile/{profile_id}/content/count")
+            if len(count) != 0:
+                result.username = count['username']
+                result.content = get(f"auth/users/{result.username}")
+                result.content['topics_count'] = count['result']['topics_count']
+                result.content['replies_count'] = count['result']['replies_count']
+        else:
+            result = localbase.lbProfile.get(profile_id)
+        return result
+
+    @staticmethod
+    def byIds(listid=[], localbase=None):
+        """
+        Метод загружает информацию о профилях по их id из списка
+
+        Параметры:
+            listid (list):Список индетификаторов профилей.
+            localbase (oapi.base.localBase):Локальная база, если не None, то читает информацию о профиле из базы.
+        """
+        result = list()
+        for p in listid:
+            result.append(profile.byId(p, localbase))
+        return result
+
+    @staticmethod
+    def byName(username=''):
+        """
+        Метод запрашивает информаю о профиле по его имени с сервера.
+
+        Параметры:
+            username (str):Имя профиля.
+
+        Возвращает:
+            profile:Информация о профиле.
+        """
+        result = profile()
+        result.content = get(f"auth/users/{username}")
+        if not result.empty:
+            count = get(f"topic/profile/{result.id}/content/count")
+            result.content['topics_count'] = count['result']['topics_count']
+            result.content['replies_count'] = count['result']['replies_count']
+        return result
+
+    def contains(self, localbase):
+        """
+        Метод возвращает истину, если текущий профиль содержится в localbase. Проверка ведётся только по ID.
+
+        Параметры:
+            localbase (oapi.base.localBase):Локальная база.
+        """
+        return localbase.lbProfile.contains(self.id)
+
+    def push(self, localbase=None):
+        """
+        Метод сохраняет информацию о профиле в localbase.
+
+        Параметры:
+            localbase (oapi.base.localBase):Локальная база.
+        """
+        localbase.lbProfile.push(self.id, self.content)
+
+    @staticmethod
+    def pushs(profiles=[], localbase=None):
+        """
+        Добовляет информацию из списка профилей в базу.
+
+        Параметры:
+            profiles (list):Список с информацией о профилях которую необходимо записать в базу.
+            localbase (oapi.base.localBase):Локальная база в которую производится запись.
+        """
+        for p in profiles:
+            p.push(localbase)
+
+    @property
+    def validity(self):
+        """
+        Метод возврощает истину, если информация профиля валидна.
+
+        Возврощает:
+            bool:Истина если данный профиль валиден.
+        """
+        if self.empty:
+            return False
+        else:
+            if self.id != 0 and self.username != '' and self.content.get('created_at', '') != '':
+                return True
+            else:
+                return False
+
+    @property
+    def id(self):
+        """
+        Свойство возвращает уникальный индетификатор профиля.
+
+        Возвращает:
+            int:Индетификатор пользователя, если content валиден иначе 0.
+        """
+        return self.content.get('id', 0)
+
+    @property
+    def created_at(self):
+        """
+        Свойство возвращает уникальный индетификатор профиля.
+
+        Возвращает:
+            int:Индетификатор пользователя, если content валиден иначе 0.
+        """
+        return datetime.fromisoformat(self.content.get('created_at', ''))
+
+    @property
+    def updated_at(self):
+        """
+        The property returns a unique profile identifier.
+
+        return:
+            int:The user ID if the content is valid, otherwise 0.
+        """
+        return datetime.fromisoformat(self.content.get('updated_at', ''))
+
+    @property
+    def username(self):
+        """
+        Свойство возвращает имя профиля.
+
+        Возвращает:
+            srt:Полное имя профиля.
+        """
+        return self.content.get('username', '')
+
+    @property
+    def topics_count(self):
+        """
+        Свойство возвращает количество постов в профиле.
+
+        Возвращает:
+            int:Количество постов.
+        """
+        return self.content.get('topics_count', '')
+
+    @property
+    def replies_count(self):
+        """
+        Свойство возвращает количество ответов в профиле.
+
+        Возвращает:
+            int:Количество ответов.
+        """
+        return self.content.get('replies_count', '')
+        if 'replies_count' in self.content:
+            return int(self.content['replies_count'])
+        else:
+            return 0
+
+    @property
+    def topics_id(self):
+        """
+        Свойство возвращает список id постов в профиле(этот список может отличатся от реального т.к этот список содержит только информацию о подгруженных постах).
+
+        Возвращает:
+            list:Список постов.
+        """
+        return self.content.get('topics_id', [])
+
+    @topics_id.setter
+    def topics_id(self, value):
+        """
+        Свойство устанавливает новый список индетификаторов постов которые будут содержатся в этом профиле.
+
+        Параметры:
+            value (list):Новый список индетификаторов постов.
+        """
+        self.content['topics_id'] = value
+
+    @property
+    def replies_id(self):
+        """
+        Свойство возвращает список id ответов профиля(этот список не отражает реальное количество ответов профиля, а содержит только ту информацию, которая известна)
+
+        Возврощает:
+            list:Список индетификаторов ответов в профиле.
+        """
+        return self.content.get('topics_id', [])
+
+    @replies_id.setter
+    def replies_id(self, value):
+        """
+        Свойство устанавливает новый список индетификаторов ответов которые будут содержатся в этом профиле.
+
+        Параметры:
+            value (list):Новый список индетефикаторов ответов.
+        """
+        self.content['replies_id'] = value
+
+    def __getitem__(self, attr):
+        return self.content.get(att)
+
+    def __setitem__(self, attr, value):
+        self.content[attr] = value
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def __ne__(self, other):
+        return self.id != other.id
+
+    def __lt__(self, other):
+        return self.id < other.id
+
+    def __le__(self, other):
+        return self.id <= other.id
+
+    def __gt__(self, other):
+        return self.id > other.id
+
+    def __ge__(self, other):
+        return self.id >= other.id
+
+    @staticmethod
+    def print(profiles):
+        """
+        Метод выводит в консоль основную информацию о профилях. Предназначен для отладки и оценки валидности работы методов.
+
+        Параметры:
+            profiles (list):Список профилей информацию о которых необходимо вывести в консоль.
+        """
+        for p in profiles:
+            if p.validity:
+                print(f'{p.id} C{p.created_at} {p.username}')
+            else:
+                print('? ? ? ?')
+
+    @staticmethod
+    def listid(profiles=[]):
+        """
+        Метод возарощет список индетификаторов профилей из списка классов профилей.
+
+        Возвращает:
+            list:Список уникальныз индетификаторов пользователей.
+        """
+        result = list()
+        for p in profiles:
+            result.append(p.id)
+        return result
+
+    @property
+    def empty(self):
+        """
+        Свойство возвращает истину, если информация о профиле отсутствует.
+
+        Возвращает:
+            bool:
+        """
+        return len(self.content) == 0
+
+    def __str__(self):
+        if self.validity:
+            return f'{self.id} C{self.created_at} {self.username}'
+        else:
+            return '? ? ? ?'
+
+
 class replie:
     def __init__(self, content=dict()):
         """
