@@ -29,10 +29,6 @@ def get(method='',session=None):
 class profile:
     """
     Класс предоставляет более удобный способ работы с контентом в котором содержится информация о профиле пользователя.
-
-    topics_id (list):Индетефикаторы постов пользователя, не обязательно все, а только те, с которыми сейчас идёт работа.
-    replies_id (list):Индетефикаторы ответов пользователя, не обязательно все, а только те, с которыми сейчас идёт работа.
-
     """
 
     def __init__(self, content=dict()):
@@ -62,18 +58,22 @@ class profile:
         """
         result = profile()
         if localbase == None:
-            count = get(f"topic/profile/{profile_id}/content/count")
-            if len(count) != 0:
-                result.username = count['username']
-                result.content = get(f"auth/users/{result.username}")
-                result.content['topics_count'] = count['result']['topics_count']
-                result.content['replies_count'] = count['result']['replies_count']
+            """Больше не работает 
+            count=get(f"topic/profile/{profile_id}/content/count")
+            print(count)
+            if len(count)!=0:
+                if 'username' in count:
+                    result.username=count['username']
+                result.content=get(f"auth/users/{result.username}")
+                result.content['topics_count']=count['result']['topics_count']
+                result.content['replies_count']=count['result']['replies_count']
+            """
         else:
             result = localbase.lbProfile.get(profile_id)
         return result
 
     @staticmethod
-    def byIds(listid=[], localbase=None):
+    def byNames(listname=[], localbase=None):
         """
         Метод загружает информацию о профилях по их id из списка
 
@@ -82,8 +82,8 @@ class profile:
             localbase (oapi.base.localBase):Локальная база, если не None, то читает информацию о профиле из базы.
         """
         result = list()
-        for p in listid:
-            result.append(profile.byId(p, localbase))
+        for n in listname:
+            result.append(profile.byName(n))
         return result
 
     @staticmethod
@@ -306,6 +306,19 @@ class profile:
             result.append(p.id)
         return result
 
+    @staticmethod
+    def listname(profiles=[]):
+        """
+        Метод возарощет список имён профилей из списка классов профилей.
+
+        Возвращает:
+            list:Список уникальныз индетификаторов пользователей.
+        """
+        result = list()
+        for p in profiles:
+            result.append(p.username)
+        return result
+
     @property
     def empty(self):
         """
@@ -321,7 +334,6 @@ class profile:
             return f'{self.id} C{self.created_at} {self.username}'
         else:
             return '? ? ? ?'
-
 
 class replie:
     def __init__(self, content=dict()):
