@@ -335,6 +335,7 @@ class profile:
         else:
             return '? ? ? ?'
 
+
 class replie:
     def __init__(self, content=dict()):
         """
@@ -548,7 +549,7 @@ class replie:
         """
         result = list()
         for t in listid:
-            result.append(profile.byId(t, localbase))
+            result.append(replie.byId(t, localbase))
         return result
 
     def contains(self, localbase=None):
@@ -572,16 +573,42 @@ class replie:
     @staticmethod
     def pushs(replies, localbase=None):
         """
-        Метод расширение для метода push, но вместо одного ответа он помещает сразу целый список.
+        Метод расширение для метода push, но вместо одного профиля он помещает сразу целый список.
 
         Параметры:
-            replies (list):Список ответов которые необходимо записать в локальную базу.
-            localbase (oapi.base.localBase):Локальная база в которую производится запись ответов.
+            replies (list):Список профилей которые необходимо записать в локальную базу.
+            localbase (oapi.base.localBase):Локальная база в которую производится запись профилей.
         """
         for r in replies:
             r.push(localbase)
 
     # api сайта
+    @staticmethod
+    def top(user_id=0, limit=200, session=None):
+        """
+        Читает ленту ответов профиля начиная с позиции pos, если данная позиция равна нулю, то читает с последнего данного ответа в списке.
+
+        Параметры:
+            user_id (int):Уникальный индетификатор профиля.
+            pos (int):Позиция с которой начинается чтение(уникальный индетефикатор ответа в цепочки ответов данных пользователем).
+            limit (int):Количество которое будем читать за раз(сервер имеет ограничение так что больше 20-40 за раз прочитать наврядли получистя).
+            session (requests.Session):Сессия которая используется при отправки GET запросов к серверу.
+
+        Возврощает:
+            list:Список ответов данных пользователем.
+        """
+        content = get(
+            f'topic/profile/{user_id}/replies?userID={user_id}&dir=0&pos=0&limit={limit}&storage=profile-{user_id}-replies',
+            session)
+        replies = content['result']['replies']
+        if replies == None:
+            return []
+        result = list()
+        for r in replies:
+            repl = replie(content=r)
+            if not repl.empty:
+                result.append(repl)
+        return result
 
     @staticmethod
     def read(user_id=0, pos=0, limit=200, session=None):
@@ -610,13 +637,14 @@ class replie:
                 result.append(repl)
         return result
 
-    # Считывает первые 10 ответов пользователя и помещает их в локальную базу.
-    def parse(prof=None, pos=0, limit=10, bar_update=None, session=None):
-        """
-
-        """
+    def parse(prof=None, pos=0, limit=20, bar_update=None, session=None):
         result = list()
-        buffer = replie.read(user_id=prof.id, limit=200, pos=pos, session=session)
+        if pos == 0:
+            buffer = replie.top(user_id=prof.id, limit=200, session=session)
+        else:
+            buffer = replie.read(user_id=prof.id, pos=pos, limit=200, session=session)
+        if buffer == []:
+            return []
         count = 0
         index = 0
         for r in buffer:
@@ -626,7 +654,7 @@ class replie:
             if count == limit:
                 if bar_update != None:
                     bar_update(index)
-                prof.replies_id.extend(replie.listid(result))
+                prof.replies_id.extend(topic.listid(result))
                 return result
 
         if bar_update != None:
@@ -634,9 +662,9 @@ class replie:
         while True:
             index = 0
             pos = result[-1].id
-            buffer = replie.read(user_id=prof.id, limit=200, pos=pos, session=session)
+            buffer = replie.read(user_id=prof.id, pos=pos, limit=200, session=session)
             if buffer == []:
-                prof.replies_id.extend(replie.listid(result))
+                prof.replies_id.extend(topic.listid(result))
                 return result
             for r in buffer:
                 result.append(r)
@@ -645,7 +673,7 @@ class replie:
                 if count == limit:
                     if bar_update != None:
                         bar_update(index)
-                    prof.replies_id.extend(replie.listid(result))
+                    prof.replies_id.extend(topic.listid(result))
                     return result
             if bar_update != None:
                 bar_update(index)
@@ -944,21 +972,16 @@ class topic:
     def main(pos, limit=200, interval=10, barload=True, session=None):
         tid = pos
         result = list()
-        bar = None
         for i in range(limit // interval):
             sublist, tid = topic.Main(tid, interval, session=session)
             if sublist == []:
                 return result
             result.extend(sublist)
-            if barload:
-                bar.update(interval)
         for i in range(limit % interval):
-            sublist = topic.Main(tid, interval, session=session)
+            sublist, tid = topic.Main(tid, interval, session=session)
             if sublist == []:
                 return result
             result.extend(sublist)
-        if barload:
-            bar.update(limit % interval)
         return result
 
     @staticmethod
@@ -988,10 +1011,22 @@ class topic:
                 if r.replyToReplyCount != 0:
                     buffer.extend(r.loadAnswer(session=session))
             if buffer == []:
-                self.content['answer'] = result
+                self.content['answer'] = replie.listid(result)
                 return result
             result.extend(buffer)
             replies = buffer
+
+    @staticmethod
+    def pushs(topics, localbase=None):
+        """
+        Метод расширение для метода push, но вместо одного поста он помещает сразу целый список.
+
+        Параметры:
+            replies (list):Список постов которые необходимо записать в локальную базу.
+            localbase (oapi.base.localBase):Локальная база в которую производится запись постов.
+        """
+        for t in topics:
+            t.push(localbase)
 
     @staticmethod
     def print(topics):
@@ -1030,5 +1065,3 @@ class topic:
             return f'{self.id} {self.authorId} {self.created_at} {self.title}'
         else:
             return '? ? ? ?'
-
-
