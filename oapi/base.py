@@ -74,45 +74,27 @@ class localProfileBase(jdict):
         return api.profile(content=super().get(profile_id))
 
 
-class localProfileRepliesIdBase(jdict):
-    def __init__(self):
-        super().__init__()
-
-
-class localProfileTopicsIdBase(jdict):
-    def __init__(self):
-        super().__init__()
-
-
 class localBase:
     def __init__(self, path):
         self.path = path
         self.lbProfile = localProfileBase()
         self.lbTopics = localTopicBase()
         self.lbReplies = localReplieBase()
-        self.lbProfTopsId = localProfileTopicsIdBase()
-        self.lbProfRepsId = localProfileRepliesIdBase()
 
     def connect(self):
         self.lbProfile.connect(f'{self.path}.profiles')
         self.lbTopics.connect(f'{self.path}.topics')
         self.lbReplies.connect(f'{self.path}.replies')
-        self.lbProfTopsId.connect(f'{self.path}.proftops')
-        self.lbProfRepsId.connect(f'{self.path}.profreps')
 
     def close(self):
         self.lbProfile.close()
         self.lbTopics.close()
         self.lbReplies.close()
-        self.lbProfTopsId.close()
-        self.lbProfRepsId.close()
 
     def flush(self):
         self.lbProfile.flush()
         self.lbTopics.flush()
         self.lbReplies.flush()
-        self.lbProfTopsId.flush()
-        self.lbProfRepsId.flush()
 
     def topics_id(self):
         return list(self.lbTopics.dpos.keys())
@@ -151,16 +133,12 @@ class localBase:
         self.lbProfile.clear()
         self.lbTopics.clear()
         self.lbReplies.clear()
-        self.lbProfTopsId.clear()
-        self.lbProfRepsId.clear()
 
     def union(self, un=None, bar_update=None):
         profiles_id = un.profiles_id()
         for p in profiles_id:
             if not self.lbProfile.contains(p):
                 self.lbProfile.push(p, un.lbProfile.get(p).content)
-                self.lbProfTopsId.push(p, un.lbProfTopsId.get(p))
-                self.lbProfRepsId.push(p, un.lbProfRepsId.get(p))
             if bar_update != None:
                 bar_update(1)
 
@@ -178,10 +156,22 @@ class localBase:
             if bar_update != None:
                 bar_update(1)
 
+
+class dateArhive:
+    def __init__(name='arhive', dict_count=3):
+        pass
+
+    def flush(self):
+        pass
+
+    def claer(self):
+        pass
+
+    def move(self, topath):
+        pass
+
     """
     def clone(self,path):
-    def union(self,localBase):
-    def clear(self):
     def move(self,path):
     def 
     """
